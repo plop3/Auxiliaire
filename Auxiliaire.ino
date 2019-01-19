@@ -16,7 +16,7 @@ double pitch, roll;
 #define PARK D7      // Télescope parqué
 #define WIRE D3      // 1-wire (T° miroir) /!\ D3 ne fonctionne pas (T° erronée)
 #define CHAUF D6     // Chauffage (MOSFET)
-#define LED D3       // LED indicateur de chauffage (Pour l'instant pas utilisé.)
+#define LED D4       // LED indicateur de chauffage (Pour l'instant pas utilisé.)
 
 // DHT22
 #include "DHT.h"          // Librairie des capteurs DHT
