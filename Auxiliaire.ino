@@ -39,7 +39,7 @@ DeviceAddress therMir; //sensorDeviceAddress;
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 const char* ssid = "astro";
-const char* password = "1234567890";
+const char* password = "B546546AF0";
 
 WiFiClient espClient;
 
