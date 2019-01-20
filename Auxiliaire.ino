@@ -106,9 +106,6 @@ void loop() {
     Serial.print("Angle: ");
     Serial.print("Pitch = "); Serial.print(pitch);
     Serial.print(" | Roll = "); Serial.println(roll);
-    //    Vector normAccel = mpu.readNormalizeAccel();
-    //int X = -(atan2(normAccel.XAxis, sqrt(normAccel.YAxis * normAccel.YAxis + normAccel.ZAxis * normAccel.ZAxis)) * 180.0) / M_PI; // pitch
-    //int  Y = (atan2(normAccel.YAxis, normAccel.ZAxis) * 180.0) / M_PI;                                                      // roll
     if (X > (XOK - TOL) && X < (XOK + TOL) && Y > (YOK - TOL) && Y < (YOK + TOL)) {
       Serial.println("Telescope parque");
       if (!digitalRead(PARK)) {
