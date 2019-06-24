@@ -1,6 +1,50 @@
-Câbler 1wire sur D4
+- Remplacer par un Wemos (tester 1wire parasite)
+- Calcul du sens du capteur: à plat ou à l'envers (utilisation de la boussole)
+- Remplacer le DHT22 par un BME-280.
+- Ajout d'un bouton de calibration de la position du park.
+- Afficheur OLED + bouton(s)
+- 1 chauffage + T°
+- 2 chauffages simples (lunette, guide)
 
-Calcul du sens du capteur: à plat ou à l'envers
-Envoi des coordonnées télescope (calcul azimut, alitude)
+Série/TCP, MQTT:
+----------------
+Lecture:
+- Position du télescope (azimut, élévation, x,y,z)
+- T°/H%/Pr (BME-280)
+- Etat des 3 chauffages
+- T° miroir
+Ecriture:
+- Puissance des chauffages (0/100%): 0 arret
+- Position zéro/park
 
+Ecran OLED:
+-----------
+------------------
+| [P] C1 C2 C3   |	Le curseur > apparait sur appui long du bouton 1 
+|-15.0° 75% 1024h| 	RAZ Park: Nouvelle position de park
+|>C1  25% 18.5°  |	RAZ XYZ: Télescope en position 0,0,0 
+| C2 100%        |
+| C3  50%        |
+| RAZ Park       |
+| RAZ XYZ        |
+|z 320.0 l -185.0|
+------------------
+roll, pitch, indicateur Park, indicateur home (vers le pôle nord)
+T°/H%/Pr
+Chauffage 1: % consigne, actuel, T° miroir
+Chauffage 2: % consigne, actuel (ON/OFF)
+Chauffage 3: % consigne, actuel (ON/OFF)
 
+Boutons:
+--------
+B1: Sélection:
+- RAZ Park
+- Chauffage 1
+- Chauffage 2
+- Chauffage 3
+B2:
+- RAZ park, appui long: reset position park
+- Chauffages (1,2,3): OFF,20%, 40%, 60%, 80%, 100%
+Options:
+--------
+- Limites méridien.

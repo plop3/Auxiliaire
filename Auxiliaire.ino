@@ -1,8 +1,8 @@
 /*
   # Serge CLAUS
   # GPL V3
-  # Version 2.1
-  # 02/11/2018
+  # Version 3.0
+  # 02/11/2018 / 24/06/2019
 */
 
 #include <Wire.h>
