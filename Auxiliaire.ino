@@ -12,7 +12,7 @@
 
 #ifndef STASSID
 #define STASSID "astro"
-#define STAPSK  "B546546AF0"
+#define STAPSK  "password"
 #endif
 
 const char* ssid = STASSID;
