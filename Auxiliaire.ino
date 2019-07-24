@@ -35,12 +35,12 @@ double AcX, AcY, AcZ, Tmp, GyX, GyY, GyZ; //int16_t
 double pitch, roll, orient;
 
 #define BOUTON D3
-#define PARK D4     // Télescope parqué
-#define LIMIT D0    // Limites (option)
+#define PARK D0     // Télescope parqué
+//#define LIMIT D0    // Limites (option)
 #define LEDR D5     // LED indicateur position home
 #define LEDV D6     // LED indicateur postion park de précision
 #define LEDB D7     // LED indicateur position park OK
-#define BOFFSET A0  // Bouton Offset
+#define BOFFSET D4  // Bouton Offset
 
 // Variables globales
 int XOK;
