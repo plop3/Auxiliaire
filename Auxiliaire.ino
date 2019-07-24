@@ -236,7 +236,7 @@ void loop() {
     EEPROM.commit();
     OFX = pitch;
     OFX = roll;
-    clignote();
+    Clignote();
     RVB(0,0,0);
     ETATB = 0;
     delay(1000);
