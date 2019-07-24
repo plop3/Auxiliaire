@@ -1,8 +1,8 @@
 /*
   # Serge CLAUS
   # GPL V3
-  # Version 4.0
-  # 02/11/2018 / 23/07/2019
+  # Version 4.1
+  # 02/11/2018 / 24/07/2019
 */
 
 #include <ESP8266WiFi.h>
@@ -18,10 +18,6 @@
 const char* ssid = STASSID;
 const char* password = STAPSK;
 
-
-
-
-
 #include <Wire.h>
 #include <EEPROM.h>
 
@@ -34,13 +30,13 @@ int status;
 double AcX, AcY, AcZ, Tmp, GyX, GyY, GyZ; //int16_t
 double pitch, roll, orient;
 
-#define BOUTON D3
-#define PARK D0     // Télescope parqué
+#define BOUTON D3   // Bouton de calibrage de position park
+#define BOFFSET D4  // Bouton Offset (position horizontale)
+#define PARK D0     // Télescope parqué (Connecté à l'abri)
 //#define LIMIT D0    // Limites (option)
 #define LEDR D5     // LED indicateur position home
 #define LEDV D6     // LED indicateur postion park de précision
 #define LEDB D7     // LED indicateur position park OK
-#define BOFFSET D4  // Bouton Offset
 
 // Variables globales
 int XOK;
@@ -59,13 +55,16 @@ void setup() {
   Serial.begin(9600);
   Serial.println("Booting");
   EEPROM.begin(512);
-
+  // Récupération des valeurs sauvegardées
   XOK = EEPROM.read(0) - 100;
   YOK = EEPROM.read(1) - 100;
   ZOK = EEPROM.read(2) - 100;
+  OFX = EEPROM.read(3) - 100;
+  OFY = EEPROM.read(4) - 100;
 
    //Initialisation des sorties
   pinMode(BOUTON, INPUT_PULLUP);
+  pinMode(BOFFSET, INPUT_PULLUP);
   pinMode(PARK, OUTPUT);
   digitalWrite(PARK, LOW);
   pinMode(LEDR, OUTPUT);
@@ -197,6 +196,9 @@ void loop() {
     if (!digitalRead(BOUTON)) {
       ETATB = 1;
     }
+    if (!digitalRead(BOFFSET)) {
+      ETATB=2;
+    }
     delay(500);
   }
   if (ETATB == 1) {
@@ -226,6 +228,18 @@ void loop() {
     RVB(0, 0, 0);
     ETATB = 0;
     delay(2000);
+  }
+  if (ETATB == 2 ) {
+    // Cablibrage des offsets
+    EEPROM.write(3,pitch+100);
+    EEPROM.write(4,roll+100);
+    EEPROM.commit();
+    OFX = pitch;
+    OFX = roll;
+    clignote();
+    RVB(0,0,0);
+    ETATB = 0;
+    delay(1000);
   }
 }
 
