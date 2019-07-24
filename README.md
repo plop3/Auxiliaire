@@ -55,3 +55,12 @@ Entrées/Sorties:
 * D6:	LED verte
 * D7:	LED bleue
 * D8:	Limites (pas encore implémenté)
+
+## Matériel:
+* Wemos mini D1 pro
+* MPU9250 (accéléromètre, gyroscope, magnétomètre)
+* 2 boutons pousoirs
+* 1 LED RVB
+* 3 résistances de 330 ohms
+* 1 fiche DIN femelle 5 broches
+* 1 boitier
