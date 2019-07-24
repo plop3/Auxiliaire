@@ -10,14 +10,14 @@ Ainsi, l'abri roulant peut se fermer.
 Calibrage:
 1. Positionner le télescope dans sa position de park
 2. Maintenir appuyé le bouton. La LED s'éclaire en blanc, puis en orange.
-3. Relacher le bouton. Le clibrage est effectué.
+3. Relacher le bouton. Le calibrage est effectué. La LED clignote en rouge.
 
 Relacher le bouton avant que la LED passe en orange annule le calibrage. Maintenir le bouton appuyé quand la LED est orange annule aussi le calibrage.
 
 Réglage des offsets 
 1. Ouvrir le boitier
 2. Placer le télescope en position horizontale (à l'aide d'un niveau)
-3. appuyer sur le bouton intérieur.
+3. appuyer sur le bouton intérieur. La LED clignote en rouge.
 
 Le calibrage des offsets permet d'améliorer la précision de la position "home"
 
@@ -37,7 +37,7 @@ Entrées/Sorties:
 	* Vert: 	axe X parqué (précision 0,5°)
 	* Rouge: 	axe Y parqué (précision 0,5°)
 	* Orange: axes XY parqués (précision 0,5°)
-	* Bleu:	télescope parqué (précision 5°)
+	* Bleu:	télescope parqué (précision 3°)
 
 	* Rouge: Position home (vise le pole céleste) (précision 2°)
 
