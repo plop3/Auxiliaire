@@ -12,7 +12,7 @@
 
 #ifndef STASSID
 #define STASSID "astro"
-#define STAPSK  "password"
+#define STAPSK  "B546546AF0"
 #endif
 
 const char* ssid = STASSID;
@@ -157,6 +157,8 @@ void loop() {
     Serial.print("XOK: "); Serial.print(XOK);
     Serial.print(" YOK: "); Serial.print(YOK);
     Serial.print(" ZOK: "); Serial.print(ZOK);
+    Serial.print(" XOF: "); Serial.print(OFX);
+    Serial.print(" YOF: "); Serial.println(OFY);
     // Orientation correcte
     if (X > (XOK - TOL) && X < (XOK + TOL) && Y > (YOK - TOL) && Y < (YOK + TOL) && Z > (ZOK - TOLZ) && Z < (ZOK + TOLZ)) {
       bool ok = false;
@@ -235,7 +237,7 @@ void loop() {
     EEPROM.write(4,roll+100);
     EEPROM.commit();
     OFX = pitch;
-    OFX = roll;
+    OFY = roll;
     Clignote();
     RVB(0,0,0);
     ETATB = 0;
