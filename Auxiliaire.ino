@@ -62,7 +62,7 @@ void setup() {
   OFX = EEPROM.read(3) - 100;
   OFY = EEPROM.read(4) - 100;
 
-   //Initialisation des sorties
+  //Initialisation des sorties
   pinMode(BOUTON, INPUT_PULLUP);
   pinMode(BOFFSET, INPUT_PULLUP);
   pinMode(PARK, OUTPUT);
@@ -185,7 +185,7 @@ void loop() {
       }
 
     }
-    else if (X > (-45 - 2) && X < (-45 + 2) && Y > (0 - 2) && Y < (0 + 2) ) {
+    else if (X > (0 - 2) && X < (0 + 2) && Y > (-45 - 2) && Y < (-45 + 2) ) {
       RVB(255, 0, 0);
       digitalWrite(PARK, LOW);
     }
@@ -199,7 +199,7 @@ void loop() {
       ETATB = 1;
     }
     if (!digitalRead(BOFFSET)) {
-      ETATB=2;
+      ETATB = 2;
     }
     delay(500);
   }
@@ -233,13 +233,13 @@ void loop() {
   }
   if (ETATB == 2 ) {
     // Cablibrage des offsets
-    EEPROM.write(3,pitch+100);
-    EEPROM.write(4,roll+100);
+    EEPROM.write(3, pitch + 100);
+    EEPROM.write(4, roll + 100);
     EEPROM.commit();
     OFX = pitch;
     OFY = roll;
     Clignote();
-    RVB(0,0,0);
+    RVB(0, 0, 0);
     ETATB = 0;
     delay(1000);
   }
