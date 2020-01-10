@@ -159,7 +159,7 @@ void loop() {
     Serial.print(" ZOK: "); Serial.print(ZOK);
     Serial.print(" XOF: "); Serial.print(OFX);
     Serial.print(" YOF: "); Serial.println(OFY);
-    // Orientation correcte
+    // Orientation correcte dans les tolérances
     if (X > (XOK - TOL) && X < (XOK + TOL) && Y > (YOK - TOL) && Y < (YOK + TOL) && Z > (ZOK - TOLZ) && Z < (ZOK + TOLZ)) {
       bool ok = false;
       if (X > (XOK - 0.5) && X < (XOK + 0.5)) {
@@ -185,20 +185,20 @@ void loop() {
       }
 
     }
+    // Télescope en position "home"
     else if (X > (0 - 2) && X < (0 + 2) && Y > (-45 - 2) && Y < (-45 + 2) ) {
       RVB(255, 0, 0);
       digitalWrite(PARK, LOW);
     }
+    // Télescope non parqué
     else {
       RVB(0, 0, 0);
       digitalWrite(PARK, LOW);
     }
-
-
-    if (!digitalRead(BOUTON)) {
+    if (!digitalRead(BOUTON)) { // Bouton de calibrage park
       ETATB = 1;
     }
-    if (!digitalRead(BOFFSET)) {
+    if (!digitalRead(BOFFSET)) {  // Bouton de calibrage offset
       ETATB = 2;
     }
     delay(500);
@@ -244,9 +244,6 @@ void loop() {
     delay(1000);
   }
 }
-
-
-
 
 //convert the accel data to pitch/roll
 void getAngle(double Vx, double Vy, double Vz) {
