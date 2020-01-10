@@ -43,6 +43,11 @@ double pitch, roll, orient;
 #define LEDB D7     // LED indicateur position park OK
 
 // Variables globales
+
+double X;
+double Y;
+double Z;
+
 int XOK;
 int YOK;
 int ZOK;
@@ -154,10 +159,10 @@ void loop() {
 
     //get pitch/roll
     getAngle(AcX, AcY, AcZ);
-    double X = pitch + OFX;
-    double Y = roll + OFY; //-10;
+    X = pitch + OFX;
+    Y = roll + OFY; //-10;
     orient = IMU.getMagX_uT();
-    double Z = orient;
+    Z = orient;
     //send the data out the serial port
     Serial.print("Orientation: "); Serial.print(IMU.getMagX_uT(), 6);
     Serial.print(" Angle: ");
