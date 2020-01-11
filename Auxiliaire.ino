@@ -235,12 +235,12 @@ void loop() {
       // Bouton relaché, on valide la position de park
       if (digitalRead(BOUTON)) {
         // Validation de la position de Park
-        EEPROM.write(0, pitch + 100);
-        EEPROM.write(1, roll + 100);
+        EEPROM.write(0,  - pitch + 100);
+        EEPROM.write(1, - roll + 100);
         EEPROM.write(2, orient + 100);
         EEPROM.commit();
-        XOK = pitch;
-        YOK = roll;
+        XOK = - pitch;
+        YOK = - roll;
         ZOK = orient;
         Clignote();
         ETATB = 0;
