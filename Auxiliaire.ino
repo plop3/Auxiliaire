@@ -11,8 +11,8 @@
 #include <ArduinoOTA.h>
 
 //Serveur Web
-#include <ESP8266WebServer.h>
-ESP8266WebServer server ( 80 );
+//#include <ESP8266WebServer.h>
+//ESP8266WebServer server ( 80 );
 
 #ifndef STASSID
 #define STASSID "astro"
@@ -130,13 +130,13 @@ void setup() {
   Serial.println(WiFi.localIP());
   
   // Serveur Web
-  server.on("/axis", showAxis);
-  server.begin();
+  //server.on("/axis", showAxis);
+  //server.begin();
 }
 
 void loop() {
   ArduinoOTA.handle();
-  server.handleClient();
+  //server.handleClient();
   if (ETATB == 0) {
     // MPU9250
     IMU.readSensor();
@@ -267,7 +267,7 @@ void loop() {
 
 void showAxis() {
   Serial.println("Affichage des axes ");
-  server.send(200, "text/plain", String(X)+" "+String(Y)+" "+String(Z)+"\n");
+//  server.send(200, "text/plain", String(X)+" "+String(Y)+" "+String(Z)+"\n");
 }
 
 //convert the accel data to pitch/roll
