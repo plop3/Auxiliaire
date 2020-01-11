@@ -159,10 +159,13 @@ void loop() {
 
     //get pitch/roll
     getAngle(AcX, AcY, AcZ);
-    X = pitch + OFX;
-    Y = roll + OFY; //-10;
+    //X = -(pitch + OFX);
+    //Y = -(roll + OFY); //-10;
+    X = - pitch;
+    Y = - roll;
     orient = IMU.getMagX_uT();
     Z = orient;
+    /*
     //send the data out the serial port
     Serial.print("Orientation: "); Serial.print(IMU.getMagX_uT(), 6);
     Serial.print(" Angle: ");
@@ -173,6 +176,7 @@ void loop() {
     Serial.print(" ZOK: "); Serial.print(ZOK);
     Serial.print(" XOF: "); Serial.print(OFX);
     Serial.print(" YOF: "); Serial.println(OFY);
+    */
     // Orientation correcte dans les tolérances
     if (X > (XOK - TOL) && X < (XOK + TOL) && Y > (YOK - TOL) && Y < (YOK + TOL) && Z > (ZOK - TOLZ) && Z < (ZOK + TOLZ)) {
       bool ok = false;
@@ -199,11 +203,13 @@ void loop() {
       }
 
     }
+    /*
     // Télescope en position "home"
     else if (X > (0 - 2) && X < (0 + 2) && Y > (-45 - 2) && Y < (-45 + 2) ) {
       RVB(255, 0, 0);
       digitalWrite(PARK, LOW);
     }
+    */
     // Télescope non parqué
     else {
       RVB(0, 0, 0);
@@ -261,7 +267,7 @@ void loop() {
 
 void showAxis() {
   Serial.println("Affichage des axes ");
-  server.send(200, "text/plain", String(X)+" "+String(Y)+" "+String(Z));
+  server.send(200, "text/plain", String(X)+" "+String(Y)+" "+String(Z)+"\n");
 }
 
 //convert the accel data to pitch/roll
@@ -291,4 +297,3 @@ void Clignote() {
     delay(200);
   }
 }
-
