@@ -135,7 +135,7 @@ void loop() {
 
     X = mpu.getPitch();
     Y = mpu.getRoll();
-    Z = mpu.getYaw()
+    Z = mpu.getYaw();
 
     // Orientation correcte dans les tolérances
     if (X > (XOK - TOL) && X < (XOK + TOL) && Y > (YOK - TOL) && Y < (YOK + TOL) && Z > (ZOK - TOLZ) && Z < (ZOK + TOLZ)) {
