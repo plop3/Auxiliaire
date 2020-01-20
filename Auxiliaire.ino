@@ -1,8 +1,8 @@
 /*
   # Serge CLAUS
   # GPL V3
-  # Version 4.1
-  # 02/11/2018 / 24/07/2019
+  # Version 4.2
+  # 02/11/2018 / 20/01/2020
 */
 
 #include <ESP8266WiFi.h>
@@ -26,18 +26,14 @@ const char* password = STAPSK;
 #include <EEPROM.h>
 
 // MPU6050
-#include <math.h>
 #include "MPU9250.h"
 
-MPU9250 IMU(Wire, 0x68);
-int status;
-double AcX, AcY, AcZ, Tmp, GyX, GyY, GyZ; //int16_t
-double pitch, roll, orient;
+MPU9250 mpu;
 
 #define BOUTON D3   // Bouton de calibrage de position park
 #define BOFFSET D4  // Bouton Offset (position horizontale)
 #define PARK D0     // Télescope parqué (Connecté à l'abri)
-//#define LIMIT D0    // Limites (option)
+#define LIMIT D8    // Limites (option)
 #define LEDR D5     // LED indicateur position home
 #define LEDV D6     // LED indicateur postion park de précision
 #define LEDB D7     // LED indicateur position park OK
@@ -83,15 +79,11 @@ void setup() {
 
   // MPU9250
   // start communication with IMU
-  status = IMU.begin();
-  if (status < 0) {
-    Serial.println("IMU initialization unsuccessful");
-    Serial.println("Check IMU wiring or try cycling power");
-    Serial.print("Status: ");
-    Serial.println(status);
-  }
+  mpu.setup();
+  // WiFi
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
+  // OTA
   ArduinoOTA.setHostname("auxiliaire");
   ArduinoOTA.onStart([]() {
     String type;
@@ -139,44 +131,12 @@ void loop() {
   server.handleClient();
   if (ETATB == 0) {
     // MPU9250
-    IMU.readSensor();
-    double AcXoff, AcYoff, AcZoff, GyXoff, GyYoff, GyZoff;
-    int temp, toff;
-    double t, tx, tf;
+	mpu.update();
 
-    //read accel data
-    AcX = IMU.getAccelX_mss();
-    AcY = IMU.getAccelY_mss();
-    AcZ = IMU.getAccelZ_mss();
+    X = mpu.getPitch();
+    Y = mpu.getRoll();
+    Z = mpu.getYaw()
 
-    //read temperature data
-    temp = IMU.getTemperature_C();
-
-    //read gyro data
-    GyX = IMU.getGyroX_rads();
-    GyY = IMU.getGyroY_rads();
-    GyZ = IMU.getGyroZ_rads();
-
-    //get pitch/roll
-    getAngle(AcX, AcY, AcZ);
-    //X = -(pitch + OFX);
-    //Y = -(roll + OFY); //-10;
-    X = - pitch;
-    Y = - roll;
-    orient = IMU.getMagX_uT();
-    Z = orient;
-    /*
-    //send the data out the serial port
-    Serial.print("Orientation: "); Serial.print(IMU.getMagX_uT(), 6);
-    Serial.print(" Angle: ");
-    Serial.print("Pitch = "); Serial.print(pitch);
-    Serial.print(" | Roll = "); Serial.println(roll);
-    Serial.print("XOK: "); Serial.print(XOK);
-    Serial.print(" YOK: "); Serial.print(YOK);
-    Serial.print(" ZOK: "); Serial.print(ZOK);
-    Serial.print(" XOF: "); Serial.print(OFX);
-    Serial.print(" YOF: "); Serial.println(OFY);
-    */
     // Orientation correcte dans les tolérances
     if (X > (XOK - TOL) && X < (XOK + TOL) && Y > (YOK - TOL) && Y < (YOK + TOL) && Z > (ZOK - TOLZ) && Z < (ZOK + TOLZ)) {
       bool ok = false;
@@ -221,7 +181,7 @@ void loop() {
     if (!digitalRead(BOFFSET)) {  // Bouton de calibrage offset
       ETATB = 2;
     }
-    delay(500);
+    delay(100);
   }
   if (ETATB == 1) {
     Serial.println("Bouton");
@@ -235,13 +195,13 @@ void loop() {
       // Bouton relaché, on valide la position de park
       if (digitalRead(BOUTON)) {
         // Validation de la position de Park
-        EEPROM.write(0,  - pitch + 100);
-        EEPROM.write(1, - roll + 100);
-        EEPROM.write(2, orient + 100);
+        EEPROM.write(0, X + 100);
+        EEPROM.write(1, Y + 100);
+        EEPROM.write(2, Z + 100);
         EEPROM.commit();
-        XOK = - pitch;
-        YOK = - roll;
-        ZOK = orient;
+        XOK = X;
+        YOK = Y;
+        ZOK = Z;
         Clignote();
         ETATB = 0;
       }
@@ -249,15 +209,15 @@ void loop() {
     // Relaché, on repasse en mode normal
     RVB(0, 0, 0);
     ETATB = 0;
-    delay(2000);
+    delay(1000);
   }
   if (ETATB == 2 ) {
     // Cablibrage des offsets
-    EEPROM.write(3, pitch + 100);
-    EEPROM.write(4, roll + 100);
+    EEPROM.write(3, X + 100);
+    EEPROM.write(4, Y + 100);
     EEPROM.commit();
-    OFX = pitch;
-    OFY = roll;
+    OFX = X;
+    OFY = Y;
     Clignote();
     RVB(0, 0, 0);
     ETATB = 0;
@@ -268,19 +228,6 @@ void loop() {
 void showAxis() {
   Serial.println("Affichage des axes ");
   server.send(200, "text/plain", String(X)+" "+String(Y)+" "+String(Z)+"\n");
-}
-
-//convert the accel data to pitch/roll
-void getAngle(double Vx, double Vy, double Vz) {
-  double x = Vx;
-  double y = Vy;
-  double z = Vz;
-
-  pitch = atan(x / sqrt((y * y) + (z * z)));
-  roll = atan(y / sqrt((x * x) + (z * z)));
-  //convert radians into degrees
-  pitch = pitch * (180.0 / 3.14);
-  roll = roll * (180.0 / 3.14) ;
 }
 
 void RVB(int R, int V, int B) {
