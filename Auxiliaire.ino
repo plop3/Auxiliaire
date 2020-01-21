@@ -14,10 +14,10 @@
 #include <ESP8266WebServer.h>
 ESP8266WebServer server ( 80 );
 
-#ifndef STASSID
+//#ifndef STASSID
 #define STASSID "astro"
 #define STAPSK  "B546546AF0"
-#endif
+//#endif
 
 const char* ssid = STASSID;
 const char* password = STAPSK;
@@ -32,15 +32,19 @@ const char* password = STAPSK;
 MPU9250 IMU(Wire, 0x68);
 int status;
 double AcX, AcY, AcZ, Tmp, GyX, GyY, GyZ; //int16_t
-double pitch, roll, orient;
+double pitch, roll, yaw;
 
 #define BOUTON D3   // Bouton de calibrage de position park
 #define BOFFSET D4  // Bouton Offset (position horizontale)
 #define PARK D0     // Télescope parqué (Connecté à l'abri)
-//#define LIMIT D0    // Limites (option)
+#define LIMIT D8    // Limites (option)
 #define LEDR D5     // LED indicateur position home
 #define LEDV D6     // LED indicateur postion park de précision
 #define LEDB D7     // LED indicateur position park OK
+
+#define TOL 3       // Tolérance de park en degrés
+#define TOLZ 50     // Tolérance boussole en degrés
+#define TOLLIM  -10 // Tolérance limites (télescope baissé)
 
 // Variables globales
 
@@ -54,9 +58,6 @@ int ZOK;
 
 int OFX = 0;      // Offset sur l'axe X
 int OFY = 0;      // Offset sur l'axe Y
-
-int TOL = 3;      // Tolérance angle en degrés (accéléromètres
-int TOLZ = 20;    // Tolérance rotation en degrés (magnétomètre)
 
 int ETATB = 0;    // Etat du bouton poussoir
 
@@ -76,6 +77,8 @@ void setup() {
   pinMode(BOFFSET, INPUT_PULLUP);
   pinMode(PARK, OUTPUT);
   digitalWrite(PARK, LOW);
+  pinMode(LIMIT, OUTPUT);
+  digitalWrite(LIMIT, LOW);
   pinMode(LEDR, OUTPUT);
   pinMode(LEDV, OUTPUT);
   pinMode(LEDB, OUTPUT);
@@ -128,7 +131,7 @@ void setup() {
   Serial.println("Ready");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
-  
+
   // Serveur Web
   server.on("/axis", showAxis);
   server.begin();
@@ -140,7 +143,7 @@ void loop() {
   if (ETATB == 0) {
     // MPU9250
     IMU.readSensor();
-    double AcXoff, AcYoff, AcZoff, GyXoff, GyYoff, GyZoff;
+    double AcXoff, AcYoff, AcZoff, GyXoff, GyYoff, GyZoff, MagX, MagY, MagZ;
     int temp, toff;
     double t, tx, tf;
 
@@ -159,69 +162,86 @@ void loop() {
 
     //get pitch/roll
     getAngle(AcX, AcY, AcZ);
+
+    MagX = IMU.getMagX_uT();
+    MagY = IMU.getMagY_uT();
+    MagZ = IMU.getMagZ_uT();
+    yaw = getYaw(MagX, MagY, MagZ);
+
     //X = -(pitch + OFX);
     //Y = -(roll + OFY); //-10;
     X = - pitch;
     Y = - roll;
-    orient = IMU.getMagX_uT();
-    Z = orient;
-    /*
-    //send the data out the serial port
-    Serial.print("Orientation: "); Serial.print(IMU.getMagX_uT(), 6);
-    Serial.print(" Angle: ");
-    Serial.print("Pitch = "); Serial.print(pitch);
-    Serial.print(" | Roll = "); Serial.println(roll);
-    Serial.print("XOK: "); Serial.print(XOK);
-    Serial.print(" YOK: "); Serial.print(YOK);
-    Serial.print(" ZOK: "); Serial.print(ZOK);
-    Serial.print(" XOF: "); Serial.print(OFX);
-    Serial.print(" YOF: "); Serial.println(OFY);
-    */
-    // Orientation correcte dans les tolérances
-    if (X > (XOK - TOL) && X < (XOK + TOL) && Y > (YOK - TOL) && Y < (YOK + TOL) && Z > (ZOK - TOLZ) && Z < (ZOK + TOLZ)) {
-      bool ok = false;
-      if (X > (XOK - 0.5) && X < (XOK + 0.5)) {
-        ok = true;
-        // Axe X parfait
-        analogWrite(LEDV, 255);
-      } else {
-        analogWrite(LEDV, 0);
-      }
-      if (Y > (YOK - 0.5) && Y < (YOK + 0.5)) {
-        ok = true;
-        // Axe Y parfait
-        analogWrite(LEDR, 255);
-      } else {
-        analogWrite(LEDR, 0);
-      }
-      Serial.println("Telescope parque");
-      digitalWrite(PARK, HIGH);
-      if (!ok) {
-        analogWrite(LEDB, 255);
-      } else {
-        analogWrite(LEDB, 0);
-      }
+    Z = yaw;
 
-    }
     /*
-    // Télescope en position "home"
-    else if (X > (0 - 2) && X < (0 + 2) && Y > (-45 - 2) && Y < (-45 + 2) ) {
-      RVB(255, 0, 0);
-      digitalWrite(PARK, LOW);
-    }
+        //send the data out the serial port
+        Serial.print("Orientation: "); Serial.print(Z, 6);
+        Serial.print(" Angle: ");
+        Serial.print("Pitch = "); Serial.print(X);
+        Serial.print(" | Roll = "); Serial.println(Y);
+        Serial.print("XOK: "); Serial.print(XOK);
+        Serial.print(" YOK: "); Serial.print(YOK);
+        Serial.print(" ZOK: "); Serial.print(ZOK);
+        Serial.print(" XOF: "); Serial.print(OFX);
+        Serial.print(" YOF: "); Serial.println(OFY);
+        delay(1000);
     */
-    // Télescope non parqué
+    // Valeur hors limites
+    if (X < TOLLIM) {
+      digitalWrite(LIMIT, HIGH);
+      analogWrite(LEDR,128);
+      analogWrite(LEDV,128);
+      analogWrite(LEDB,128);
+    }
     else {
-      RVB(0, 0, 0);
-      digitalWrite(PARK, LOW);
+      digitalWrite(LIMIT, LOW);
+      // Orientation correcte dans les tolérances
+      if (X > (XOK - TOL) && X < (XOK + TOL) && Y > (YOK - TOL) && Y < (YOK + TOL) && Z > (ZOK - TOLZ) && Z < (ZOK + TOLZ)) {
+        bool ok = false;
+        if (X > (XOK - 0.5) && X < (XOK + 0.5)) {
+          ok = true;
+          // Axe X parfait
+          analogWrite(LEDV, 255);
+        } else {
+          analogWrite(LEDV, 0);
+        }
+        if (Y > (YOK - 0.5) && Y < (YOK + 0.5)) {
+          ok = true;
+          // Axe Y parfait
+          analogWrite(LEDR, 255);
+        } else {
+          analogWrite(LEDR, 0);
+        }
+        //Serial.println("Telescope parque");
+        digitalWrite(PARK, HIGH);
+        if (!ok) {
+          analogWrite(LEDB, 255);
+        } else {
+          analogWrite(LEDB, 0);
+        }
+
+      }
+      /*
+        // Télescope en position "home"
+        else if (X > (0 - 2) && X < (0 + 2) && Y > (-45 - 2) && Y < (-45 + 2) ) {
+        RVB(255, 0, 0);
+        digitalWrite(PARK, LOW);
+        }
+      */
+      // Télescope non parqué
+      else {
+        RVB(0, 0, 0);
+        digitalWrite(PARK, LOW);
+      }
+      if (!digitalRead(BOUTON)) { // Bouton de calibrage park
+        ETATB = 1;
+      }
+      if (!digitalRead(BOFFSET)) {  // Bouton de calibrage offset
+        ETATB = 2;
+      }
+      delay(200);
     }
-    if (!digitalRead(BOUTON)) { // Bouton de calibrage park
-      ETATB = 1;
-    }
-    if (!digitalRead(BOFFSET)) {  // Bouton de calibrage offset
-      ETATB = 2;
-    }
-    delay(500);
   }
   if (ETATB == 1) {
     Serial.println("Bouton");
@@ -237,11 +257,11 @@ void loop() {
         // Validation de la position de Park
         EEPROM.write(0,  - pitch + 100);
         EEPROM.write(1, - roll + 100);
-        EEPROM.write(2, orient + 100);
+        EEPROM.write(2, yaw + 100);
         EEPROM.commit();
         XOK = - pitch;
         YOK = - roll;
-        ZOK = orient;
+        ZOK = yaw;
         Clignote();
         ETATB = 0;
       }
@@ -249,7 +269,7 @@ void loop() {
     // Relaché, on repasse en mode normal
     RVB(0, 0, 0);
     ETATB = 0;
-    delay(2000);
+    delay(500);
   }
   if (ETATB == 2 ) {
     // Cablibrage des offsets
@@ -261,13 +281,13 @@ void loop() {
     Clignote();
     RVB(0, 0, 0);
     ETATB = 0;
-    delay(1000);
+    delay(500);
   }
 }
 
 void showAxis() {
   Serial.println("Affichage des axes ");
-  server.send(200, "text/plain", String(X)+" "+String(Y)+" "+String(Z)+"\n");
+  server.send(200, "text/plain", String(X) + " " + String(Y) + " " + String(Z) + "\n");
 }
 
 //convert the accel data to pitch/roll
@@ -281,6 +301,14 @@ void getAngle(double Vx, double Vy, double Vz) {
   //convert radians into degrees
   pitch = pitch * (180.0 / 3.14);
   roll = roll * (180.0 / 3.14) ;
+}
+
+double getYaw(double magX, double magY, double magZ) {
+  //float Yh = (magY * cos(radians(roll))) - (magZ * sin(radians(roll)));
+  //float Xh = (magX * cos(radians(pitch)))+(magY * sin(radians(roll))*sin(radians(pitch))) + (magZ * cos(radians(roll)) * sin(radians(pitch)));
+  //return  57.3*(atan2(Yh, Xh));
+  return magX * 3.6;
+
 }
 
 void RVB(int R, int V, int B) {
