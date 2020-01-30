@@ -1,8 +1,8 @@
 /*
   # Serge CLAUS
   # GPL V3
-  # Version 4.1
-  # 02/11/2018 / 24/07/2019
+  # Version 4.2
+  # 02/11/2018 / 29/01/2020
 */
 
 #include <ESP8266WiFi.h>
@@ -30,9 +30,6 @@ const char* password = STAPSK;
 #include "MPU9250.h"
 
 MPU9250 IMU(Wire, 0x68);
-int status;
-double AcX, AcY, AcZ, Tmp, GyX, GyY, GyZ; //int16_t
-double pitch, roll, yaw;
 
 #define BOUTON D3   // Bouton de calibrage de position park
 #define BOFFSET D4  // Bouton Offset (position horizontale)
@@ -43,21 +40,34 @@ double pitch, roll, yaw;
 #define LEDB D7     // LED indicateur position park OK
 
 #define TOL 3       // Tolérance de park en degrés
-#define TOLZ 50     // Tolérance boussole en degrés
+#define TCAL 0.5    // Axe calibré
+#define TOLH 1.5      // Tolérance home
+#define TOLZ 30     // Tolérance boussole en degrés
+#define TOLAZ 1     // Tolérance magnétomètre Z en g
 #define TOLLIM  -10 // Tolérance limites (télescope baissé)
 
+#define D 8			// Taille en octets d'un double
+
 // Variables globales
+
+int status;
+double AcX, AcY, AcZ, Tmp, GyX, GyY, GyZ; //int16_t
+double pitch, roll, yaw;
 
 double X;
 double Y;
 double Z;
+double AZ;
 
-int XOK;
-int YOK;
-int ZOK;
+double XOK;
+double YOK;
+double ZOK;
+double AOK;
 
-int OFX = 0;      // Offset sur l'axe X
-int OFY = 0;      // Offset sur l'axe Y
+double OFX = 0;      // Offset sur l'axe X
+double OFY = 0;      // Offset sur l'axe Y
+
+bool park, xx, yy, limit, home = false;
 
 int ETATB = 0;    // Etat du bouton poussoir
 
@@ -66,11 +76,12 @@ void setup() {
   Serial.println("Booting");
   EEPROM.begin(512);
   // Récupération des valeurs sauvegardées
-  XOK = EEPROM.read(0) - 100;
-  YOK = EEPROM.read(1) - 100;
-  ZOK = EEPROM.read(2) - 100;
-  OFX = EEPROM.read(3) - 100;
-  OFY = EEPROM.read(4) - 100;
+  EEPROM.get(0 * D, XOK);
+  EEPROM.get(1 * D, YOK);
+  EEPROM.get(2 * D, ZOK);
+  EEPROM.get(3 * D, OFX);
+  EEPROM.get(4 * D, OFY);
+  EEPROM.get(5 * D, AOK);
 
   //Initialisation des sorties
   pinMode(BOUTON, INPUT_PULLUP);
@@ -82,7 +93,7 @@ void setup() {
   pinMode(LEDR, OUTPUT);
   pinMode(LEDV, OUTPUT);
   pinMode(LEDB, OUTPUT);
-  RVB(0, 0, 0);
+  RVB(255, 255, 255);
 
   // MPU9250
   // start communication with IMU
@@ -95,6 +106,14 @@ void setup() {
   }
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
+  int nb = 5;
+  while ((WiFi.waitForConnectResult() != WL_CONNECTED) && (nb > 0)) {
+    nb--;
+    Serial.println("Connection Failed! Restart...");
+    delay(5000);
+    //ESP.restart();
+  }
+
   ArduinoOTA.setHostname("auxiliaire");
   ArduinoOTA.onStart([]() {
     String type;
@@ -131,15 +150,19 @@ void setup() {
   Serial.println("Ready");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
-
   // Serveur Web
+
   server.on("/axis", showAxis);
+  server.on("/status", showStatus);
+  server.on("/set", setPark);
   server.begin();
+
 }
 
 void loop() {
   ArduinoOTA.handle();
   server.handleClient();
+
   if (ETATB == 0) {
     // MPU9250
     IMU.readSensor();
@@ -151,6 +174,7 @@ void loop() {
     AcX = IMU.getAccelX_mss();
     AcY = IMU.getAccelY_mss();
     AcZ = IMU.getAccelZ_mss();
+    AZ = AcZ;
 
     //read temperature data
     temp = IMU.getTemperature_C();
@@ -168,12 +192,13 @@ void loop() {
     MagZ = IMU.getMagZ_uT();
     yaw = getYaw(MagX, MagY, MagZ);
 
-    //X = -(pitch + OFX);
-    //Y = -(roll + OFY); //-10;
-    X = - pitch;
-    Y = - roll;
+    X = pitch - OFX;
+    Y = roll - OFY;
     Z = yaw;
+    Serial.print(String(X) + ',' + String(Y));
+    Serial.print(" " + String(AcZ));
 
+    Serial.println();
     /*
         //send the data out the serial port
         Serial.print("Orientation: "); Serial.print(Z, 6);
@@ -187,81 +212,90 @@ void loop() {
         Serial.print(" YOF: "); Serial.println(OFY);
         delay(1000);
     */
-    // Valeur hors limites
-    if (X < TOLLIM) {
+    // Park Ok
+    park = (AZ > (AOK - TOLAZ) && (AZ < (AOK + TOLAZ) && X > (XOK - TOL) && X < (XOK + TOL) && Y > (YOK - TOL) && Y < (YOK + TOL) && Z > (ZOK - TOLZ) && Z < (ZOK + TOLZ)) ? true : false);
+    // Valeur X OK
+    xx = ((X > (XOK - TCAL) && X < (XOK + TCAL)) ? true : false);
+    yy = ((Y > (YOK - TCAL) && Y < (YOK + TCAL)) ? true : false);
+
+    // Position home
+    home = ((Y > (0 - TOLH) && Y < (0 + TOLH) && X > (45 - TOLH) && X < (45 + TOLH) ) ? true : false);
+    // Hors limites
+    limit = ((X < TOLLIM) ? true : false );
+
+    if (limit) {
+      // Limites
+      Serial.println("Limites");
       digitalWrite(LIMIT, HIGH);
-      analogWrite(LEDR,128);
-      analogWrite(LEDV,128);
-      analogWrite(LEDB,128);
+      RVB(255, 0, 0); // Rouge
     }
     else {
       digitalWrite(LIMIT, LOW);
-      // Orientation correcte dans les tolérances
-      if (X > (XOK - TOL) && X < (XOK + TOL) && Y > (YOK - TOL) && Y < (YOK + TOL) && Z > (ZOK - TOLZ) && Z < (ZOK + TOLZ)) {
-        bool ok = false;
-        if (X > (XOK - 0.5) && X < (XOK + 0.5)) {
-          ok = true;
-          // Axe X parfait
-          analogWrite(LEDV, 255);
-        } else {
-          analogWrite(LEDV, 0);
-        }
-        if (Y > (YOK - 0.5) && Y < (YOK + 0.5)) {
-          ok = true;
-          // Axe Y parfait
-          analogWrite(LEDR, 255);
-        } else {
-          analogWrite(LEDR, 0);
-        }
-        //Serial.println("Telescope parque");
-        digitalWrite(PARK, HIGH);
-        if (!ok) {
-          analogWrite(LEDB, 255);
-        } else {
-          analogWrite(LEDB, 0);
-        }
+    }
+    if (home) {
+      // Home
+      Serial.println("Home");
+      RVB(237, 127, 16);
+    }
+    if (park) {
+      Serial.println("Park");
+      digitalWrite(PARK, HIGH);
+      if (xx && yy) {
+        // Deux axes calibrés
+        RVB(0, 255, 0); // Vert
+      }
+      else if (xx) {
+        // Axe X calibré
+        RVB(255, 0, 255);; // Orange
+      }
+      else if (yy) {
+        // Axe Y calibré
+        RVB(255, 255, 0);  //Jaune
 
       }
-      /*
-        // Télescope en position "home"
-        else if (X > (0 - 2) && X < (0 + 2) && Y > (-45 - 2) && Y < (-45 + 2) ) {
-        RVB(255, 0, 0);
-        digitalWrite(PARK, LOW);
-        }
-      */
-      // Télescope non parqué
       else {
-        RVB(0, 0, 0);
-        digitalWrite(PARK, LOW);
+        // Position Park
+        RVB(0, 0, 255); // Bleu
       }
-      if (!digitalRead(BOUTON)) { // Bouton de calibrage park
-        ETATB = 1;
-      }
-      if (!digitalRead(BOFFSET)) {  // Bouton de calibrage offset
-        ETATB = 2;
-      }
-      delay(200);
     }
+    else {
+      // Télescope non parqué
+      digitalWrite(PARK, LOW);
+      if (!home && !limit) RVB(0, 0, 0); // LEDs éteintes
+    }
+
+
+
+    // Lecture des boutons
+    if (!digitalRead(BOUTON)) { // Bouton de calibrage park
+      ETATB = 1;
+    }
+    if (!digitalRead(BOFFSET)) {  // Bouton de calibrage offset
+      ETATB = 2;
+    }
+    delay(200);
   }
   if (ETATB == 1) {
     Serial.println("Bouton");
-    RVB(255, 255, 255);
+    RVB(237, 237, 237);
     delay(1000);
     // Bouton toujours appuyé ?
     //On passe en orange
     if (!digitalRead(BOUTON)) {
-      RVB(237, 127, 16);
+      RVB(102, 0, 153);
       delay(3000);
       // Bouton relaché, on valide la position de park
       if (digitalRead(BOUTON)) {
         // Validation de la position de Park
-        EEPROM.write(0,  - pitch + 100);
-        EEPROM.write(1, - roll + 100);
-        EEPROM.write(2, yaw + 100);
+        EEPROM.put(0 * D, X);
+        EEPROM.put(1 * D, Y);
+        EEPROM.put(2 * D, Z);
+        EEPROM.put(5 * D, AZ);
         EEPROM.commit();
-        XOK = - pitch;
-        YOK = - roll;
-        ZOK = yaw;
+        XOK = X;
+        YOK = Y;
+        ZOK = Z;
+        AOK = AZ;
         Clignote();
         ETATB = 0;
       }
@@ -273,13 +307,12 @@ void loop() {
   }
   if (ETATB == 2 ) {
     // Cablibrage des offsets
-    EEPROM.write(3, pitch + 100);
-    EEPROM.write(4, roll + 100);
+    EEPROM.put(3 * D, pitch);
+    EEPROM.put(4 * D, roll);
     EEPROM.commit();
     OFX = pitch;
     OFY = roll;
     Clignote();
-    RVB(0, 0, 0);
     ETATB = 0;
     delay(500);
   }
@@ -290,6 +323,29 @@ void showAxis() {
   server.send(200, "text/plain", String(X) + " " + String(Y) + " " + String(Z) + "\n");
 }
 
+void showStatus() {
+  Serial.println("Affichage du status du télescope ");
+  String status = "N";
+  if (limit) status = "L";
+  if (home) status = "H";
+  if (park) status = "P";
+  server.send(200, "text/plain", status + "\n");
+}
+
+void setPark() {
+  // Valide la nouvelle position de park
+  EEPROM.put(0 * D, X);
+  EEPROM.put(1 * D, Y);
+  EEPROM.put(2 * D, Z);
+  EEPROM.put(5 * D, AZ);
+  EEPROM.commit();
+  XOK = X;
+  YOK = Y;
+  ZOK = Z;
+  AOK = AZ;
+  server.send(200, "text/plain", "set" + String(XOK)+","+String(YOK)+","+String(ZOK)+"\t"+String(AOK) + "\n");
+  Clignote();
+}
 //convert the accel data to pitch/roll
 void getAngle(double Vx, double Vy, double Vz) {
   double x = Vx;
@@ -299,16 +355,16 @@ void getAngle(double Vx, double Vy, double Vz) {
   pitch = atan(x / sqrt((y * y) + (z * z)));
   roll = atan(y / sqrt((x * x) + (z * z)));
   //convert radians into degrees
-  pitch = pitch * (180.0 / 3.14);
-  roll = roll * (180.0 / 3.14) ;
+  pitch = - pitch * (180.0 / 3.14);
+  roll = - roll * (180.0 / 3.14) ;
 }
 
 double getYaw(double magX, double magY, double magZ) {
-  //float Yh = (magY * cos(radians(roll))) - (magZ * sin(radians(roll)));
-  //float Xh = (magX * cos(radians(pitch)))+(magY * sin(radians(roll))*sin(radians(pitch))) + (magZ * cos(radians(roll)) * sin(radians(pitch)));
+  float Yh = (magY * cos(radians(roll))) - (magZ * sin(radians(roll)));
+  float Xh = (magX * cos(radians(pitch))) + (magY * sin(radians(roll)) * sin(radians(pitch))) + (magZ * cos(radians(roll)) * sin(radians(pitch)));
   //return  57.3*(atan2(Yh, Xh));
-  return magX * 3.6;
-
+  //return magX * 3.6;
+  return  abs(57.3 * (atan2(Yh, Xh)));
 }
 
 void RVB(int R, int V, int B) {
