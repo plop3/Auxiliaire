@@ -44,7 +44,10 @@ MPU9250 IMU(Wire, 0x68);
 #define TOLH 1.5      // Tolérance home
 #define TOLZ 30     // Tolérance boussole en degrés
 #define TOLAZ 1     // Tolérance magnétomètre Z en g
-#define TOLLIM  -10 // Tolérance limites (télescope baissé)
+#define TOLLIMX   -15 // Tolérance limites (télescope baissé)
+#define TOLLIMYH  -10 // Tolérance AD, télescope horizontal
+#define TOLLIMYV  -5  // Tolérance AD, télescope vertical
+#define TVERT     10  // Angle (90+/- TVERT) télescope considéré vertical  
 
 #define D 8			// Taille en octets d'un double
 
@@ -68,6 +71,7 @@ double OFX = 0;      // Offset sur l'axe X
 double OFY = 0;      // Offset sur l'axe Y
 
 bool park, xx, yy, limit, home = false;
+bool LimitStatus = true;
 
 int ETATB = 0;    // Etat du bouton poussoir
 
@@ -155,6 +159,7 @@ void setup() {
   server.on("/axis", showAxis);
   server.on("/status", showStatus);
   server.on("/set", setPark);
+  server.on("/lim", setLimit);
   server.begin();
 
 }
@@ -221,16 +226,25 @@ void loop() {
     // Position home
     home = ((Y > (0 - TOLH) && Y < (0 + TOLH) && X > (45 - TOLH) && X < (45 + TOLH) ) ? true : false);
     // Hors limites
-    limit = ((X < TOLLIM) ? true : false );
-
-    if (limit) {
-      // Limites
-      Serial.println("Limites");
-      digitalWrite(LIMIT, HIGH);
-      RVB(255, 0, 0); // Rouge
+    if (LimitStatus) {
+      if ((X - TVERT) > 90 || (X + TVERT) > 90 ) {
+        limit = ((X < TOLLIMX) || (Y < TOLLIMYV) ? true : false );
+      }
+      else {
+        limit = ((X < TOLLIMX) || (Y < TOLLIMYH) ? true : false );
+      }
+      if (limit) {
+        // Limites
+        Serial.println("Limites");
+        digitalWrite(LIMIT, HIGH);
+        RVB(255, 0, 0); // Rouge
+      }
+      else {
+        digitalWrite(LIMIT, LOW);
+      }
     }
     else {
-      digitalWrite(LIMIT, LOW);
+      limit=false;
     }
     if (home) {
       // Home
@@ -332,6 +346,20 @@ void showStatus() {
   server.send(200, "text/plain", status + "\n");
 }
 
+void setLimit() {
+  // Active/désactive les limites
+  String state;
+  state = server.arg("enable");
+  if (state == "0") {
+    LimitStatus = false;
+    server.send ( 200, "text/html", "inactif");
+  }
+  else if (state == "1") {
+    LimitStatus = true;
+    server.send ( 200, "text/html", "actif");
+  }
+}
+
 void setPark() {
   // Valide la nouvelle position de park
   EEPROM.put(0 * D, X);
@@ -343,7 +371,7 @@ void setPark() {
   YOK = Y;
   ZOK = Z;
   AOK = AZ;
-  server.send(200, "text/plain", "set" + String(XOK)+","+String(YOK)+","+String(ZOK)+"\t"+String(AOK) + "\n");
+  server.send(200, "text/plain", "set" + String(XOK) + "," + String(YOK) + "," + String(ZOK) + "\t" + String(AOK) + "\n");
   Clignote();
 }
 //convert the accel data to pitch/roll
