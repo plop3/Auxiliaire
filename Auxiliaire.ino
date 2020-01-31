@@ -33,21 +33,23 @@ MPU9250 IMU(Wire, 0x68);
 
 #define BOUTON D3   // Bouton de calibrage de position park
 #define BOFFSET D4  // Bouton Offset (position horizontale)
-#define PARK D0     // Télescope parqué (Connecté à l'abri)
-#define LIMIT D8    // Limites (option)
+#define PARK D8     // Télescope parqué (Connecté à l'abri)
+#define LIMIT D0    // Limites (option)
 #define LEDR D5     // LED indicateur position home
 #define LEDV D6     // LED indicateur postion park de précision
 #define LEDB D7     // LED indicateur position park OK
 
 #define TOL 3       // Tolérance de park en degrés
 #define TCAL 0.5    // Axe calibré
-#define TOLH 1.5      // Tolérance home
-#define TOLZ 30     // Tolérance boussole en degrés
+#define TOLH 7      // Tolérance home
+#define TOLZ 50     // Tolérance boussole en degrés
 #define TOLAZ 1     // Tolérance magnétomètre Z en g
 #define TOLLIMX   -15 // Tolérance limites (télescope baissé)
-#define TOLLIMYH  -10 // Tolérance AD, télescope horizontal
-#define TOLLIMYV  -5  // Tolérance AD, télescope vertical
-#define TVERT     10  // Angle (90+/- TVERT) télescope considéré vertical  
+#define TOLLIMYH  -11 // Tolérance AD, télescope horizontal
+#define TOLLIMYV  -4.5  // Tolérance AD, télescope vertical
+#define TVERT     11  // Angle (90+/- TVERT) télescope considéré vertical  
+#define VMIN      58  // Hauteur mini vertical
+#define VMAX      80  // Hauteur maxi vertical
 
 #define D 8			// Taille en octets d'un double
 
@@ -55,7 +57,7 @@ MPU9250 IMU(Wire, 0x68);
 
 int status;
 double AcX, AcY, AcZ, Tmp, GyX, GyY, GyZ; //int16_t
-double pitch, roll, yaw;
+double pitch, roll, cote, angle, yaw;
 
 double X;
 double Y;
@@ -93,7 +95,7 @@ void setup() {
   pinMode(PARK, OUTPUT);
   digitalWrite(PARK, LOW);
   pinMode(LIMIT, INPUT);
-  //digitalWrite(LIMIT, LOW);
+  digitalWrite(LIMIT, LOW);
   pinMode(LEDR, OUTPUT);
   pinMode(LEDV, OUTPUT);
   pinMode(LEDB, OUTPUT);
@@ -190,13 +192,15 @@ void loop() {
     GyZ = IMU.getGyroZ_rads();
 
     //get pitch/roll
-    getAngle(AcX, AcY, AcZ);
+    getAngle(AcX, AcY, AcZ); 
 
     MagX = IMU.getMagX_uT();
     MagY = IMU.getMagY_uT();
     MagZ = IMU.getMagZ_uT();
     yaw = getYaw(MagX, MagY, MagZ);
-
+    angle=AcZ;
+    cote=MagZ;
+    
     X = pitch - OFX;
     Y = roll - OFY;
     Z = yaw;
@@ -224,10 +228,13 @@ void loop() {
     yy = ((Y > (YOK - TCAL) && Y < (YOK + TCAL)) ? true : false);
 
     // Position home
-    home = ((Y > (0 - TOLH) && Y < (0 + TOLH) && X > (45 - TOLH) && X < (45 + TOLH) ) ? true : false);
+    home = ((Y > (50 - TOLH) && Y < (50 + TOLH) && X > (45 - TOLH) && X < (45 + TOLH) ) ? true : false);
+
+    
     // Hors limites
+    
     if (LimitStatus) {
-      if ((X - TVERT) > 90 || (X + TVERT) > 90 ) {
+      if (X>VMIN && X<VMAX && (((cote<-50) && (angle >0)) || ((cote>-30 && angle<0)))) {
         limit = ((X < TOLLIMX) || (Y < TOLLIMYV) ? true : false );
       }
       else {
@@ -242,7 +249,7 @@ void loop() {
       }
       else {
         pinMode(LIMIT, INPUT);
-        //digitalWrite(LIMIT, LOW);
+        digitalWrite(LIMIT, LOW);
       }
     }
     else {
@@ -251,7 +258,7 @@ void loop() {
     if (home) {
       // Home
       Serial.println("Home");
-      RVB(237, 127, 16);
+      //RVB(237, 127, 16);
     }
     if (park) {
       Serial.println("Park");
@@ -336,7 +343,7 @@ void loop() {
 
 void showAxis() {
   Serial.println("Affichage des axes ");
-  server.send(200, "text/plain", String(X) + " " + String(Y) + " " + String(Z) + "\n");
+  server.send(200, "text/plain", String(X) + " " + String(Y) + " " + String(Z) + "\t"+String(angle)+","+String(cote)+"\n");
 }
 
 void showStatus() {
@@ -373,7 +380,7 @@ void setPark() {
   YOK = Y;
   ZOK = Z;
   AOK = AZ;
-  server.send(200, "text/plain", "set" + String(XOK) + "," + String(YOK) + "," + String(ZOK) + "\t" + String(AOK) + "\n");
+  server.send(200, "text/plain", "set" + String(XOK) + "," + String(YOK) + "," + String(ZOK) + "\t" + String(AcY) + "\n");
   Clignote();
 }
 //convert the accel data to pitch/roll
