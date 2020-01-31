@@ -92,8 +92,8 @@ void setup() {
   pinMode(BOFFSET, INPUT_PULLUP);
   pinMode(PARK, OUTPUT);
   digitalWrite(PARK, LOW);
-  pinMode(LIMIT, OUTPUT);
-  digitalWrite(LIMIT, LOW);
+  pinMode(LIMIT, INPUT);
+  //digitalWrite(LIMIT, LOW);
   pinMode(LEDR, OUTPUT);
   pinMode(LEDV, OUTPUT);
   pinMode(LEDB, OUTPUT);
@@ -236,11 +236,13 @@ void loop() {
       if (limit) {
         // Limites
         Serial.println("Limites");
-        digitalWrite(LIMIT, HIGH);
+        digitalWrite(LIMIT, LOW);
+        pinMode(LIMIT, OUTPUT);
         RVB(255, 0, 0); // Rouge
       }
       else {
-        digitalWrite(LIMIT, LOW);
+        pinMode(LIMIT, INPUT);
+        //digitalWrite(LIMIT, LOW);
       }
     }
     else {
