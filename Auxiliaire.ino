@@ -14,10 +14,7 @@
 #include <ESP8266WebServer.h>
 ESP8266WebServer server ( 80 );
 
-//#ifndef STASSID
-#define STASSID "astro"
-#define STAPSK  "B546546AF0"
-//#endif
+#include "WiFiP.h"
 
 const char* ssid = STASSID;
 const char* password = STAPSK;
@@ -45,10 +42,10 @@ MPU9250 IMU(Wire, 0x68);
 #define TOLZ 50     // Tolérance boussole en degrés
 #define TOLAZ 1     // Tolérance magnétomètre Z en g
 #define TOLLIMX   -15 // Tolérance limites (télescope baissé)
-//#define TOLLIMYH  -11 // Tolérance AD, télescope horizontal TELESCOPE
-//#define TOLLIMYV  -4.5  // Tolérance AD, télescope vertical TELESCOPE
-#define TOLLIMYH  -20 // Tolérance AD, télescope horizontal   LUNETTE
-#define TOLLIMYV  -20  // Tolérance AD, télescope vertical    LUNETTE
+#define TOLLIMYH  -11 // Tolérance AD, télescope horizontal TELESCOPE
+#define TOLLIMYV  -4.5  // Tolérance AD, télescope vertical TELESCOPE
+//#define TOLLIMYH  -20 // Tolérance AD, télescope horizontal   LUNETTE
+//#define TOLLIMYV  -20  // Tolérance AD, télescope vertical    LUNETTE
 
 #define TVERT     11  // Angle (90+/- TVERT) télescope considéré vertical  
 #define VMIN      58  // Hauteur mini vertical
