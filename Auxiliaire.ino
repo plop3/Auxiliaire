@@ -112,11 +112,11 @@ void setup() {
   }
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
-  int nb = 5;
+  int nb = 50;
   while ((WiFi.waitForConnectResult() != WL_CONNECTED) && (nb > 0)) {
     nb--;
     Serial.println("Connection Failed! Restart...");
-    delay(5000);
+    delay(6000);
     //ESP.restart();
   }
 
@@ -192,15 +192,15 @@ void loop() {
     GyZ = IMU.getGyroZ_rads();
 
     //get pitch/roll
-    getAngle(AcX, AcY, AcZ); 
+    getAngle(AcX, AcY, AcZ);
 
     MagX = IMU.getMagX_uT();
     MagY = IMU.getMagY_uT();
     MagZ = IMU.getMagZ_uT();
     yaw = getYaw(MagX, MagY, MagZ);
-    angle=AcZ;
-    cote=MagZ;
-    
+    angle = AcZ;
+    cote = MagZ;
+
     X = pitch - OFX;
     Y = roll - OFY;
     Z = yaw;
@@ -230,11 +230,11 @@ void loop() {
     // Position home
     home = ((Y > (50 - TOLH) && Y < (50 + TOLH) && X > (45 - TOLH) && X < (45 + TOLH) ) ? true : false);
 
-    
+
     // Hors limites
-    
+
     if (LimitStatus) {
-      if (X>VMIN && X<VMAX && (((cote<-50) && (angle >0)) || ((cote>-30 && angle<0)))) {
+      if (X > VMIN && X < VMAX && (((cote < -50) && (angle > 0)) || ((cote > -30 && angle < 0)))) {
         limit = ((X < TOLLIMX) || (Y < TOLLIMYV) ? true : false );
       }
       else {
@@ -253,7 +253,7 @@ void loop() {
       }
     }
     else {
-      limit=false;
+      limit = false;
     }
     if (home) {
       // Home
@@ -343,7 +343,7 @@ void loop() {
 
 void showAxis() {
   Serial.println("Affichage des axes ");
-  server.send(200, "text/plain", String(X) + " " + String(Y) + " " + String(Z) + "\t"+String(angle)+","+String(cote)+"\n");
+  server.send(200, "text/plain", String(X) + " " + String(Y) + " " + String(Z) + "\t" + String(angle) + "," + String(cote) + "\n");
 }
 
 void showStatus() {
