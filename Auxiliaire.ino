@@ -72,7 +72,7 @@ double AOK;
 double OFX = 0;      // Offset sur l'axe X
 double OFY = 0;      // Offset sur l'axe Y
 
-bool park, xx, yy, limit, home = false;
+bool park, prevPark, xx, yy, limit, home = false;
 bool LimitStatus = true;
 
 int ETATB = 0;    // Etat du bouton poussoir
@@ -222,6 +222,8 @@ void loop() {
         delay(1000);
     */
     // Park Ok
+    prevPark = park;
+    delay(100);
     park = (AZ > (AOK - TOLAZ) && (AZ < (AOK + TOLAZ) && X > (XOK - TOL) && X < (XOK + TOL) && Y > (YOK - TOL) && Y < (YOK + TOL) && Z > (ZOK - TOLZ) && Z < (ZOK + TOLZ)) ? true : false);
     // Valeur X OK
     xx = ((X > (XOK - TCAL) && X < (XOK + TCAL)) ? true : false);
@@ -283,7 +285,7 @@ void loop() {
     }
     else {
       // Télescope non parqué
-      digitalWrite(PARK, LOW);
+      if (!prevPark) digitalWrite(PARK, LOW);
       if (!home && !limit) RVB(0, 0, 0); // LEDs éteintes
     }
 
