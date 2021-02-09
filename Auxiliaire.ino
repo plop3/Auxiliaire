@@ -1,9 +1,31 @@
 /*
   # Serge CLAUS
   # GPL V3
-  # Version 4.2
-  # 02/11/2018 / 29/01/2020
+  # Version 5.0
+  # 02/11/2018 / 09/02/2021
 */
+
+#define BOUTON  D6    // Bouton de calibrage de position park
+#define PARK    D3    // Télescope parqué (Connecté à l'abri)
+#define LIMIT   D4    // Limites (option)
+#define LED     D5     // LED indicateur position home
+
+#define TOL 3       // Tolérance de park en degrés
+#define TCAL 0.5    // Axe calibré
+#define TOLH 7      // Tolérance home
+#define TOLZ 50     // Tolérance boussole en degrés
+#define TOLAZ 1     // Tolérance magnétomètre Z en g
+#define TOLLIMX   -15 // Tolérance limites (télescope baissé)
+#define TOLLIMYH  -11 // Tolérance AD, télescope horizontal TELESCOPE
+#define TOLLIMYV  -4.5  // Tolérance AD, télescope vertical TELESCOPE
+//#define TOLLIMYH  -20 // Tolérance AD, télescope horizontal   LUNETTE
+//#define TOLLIMYV  -20  // Tolérance AD, télescope vertical    LUNETTE
+
+#define TVERT     11  // Angle (90+/- TVERT) télescope considéré vertical  
+#define VMIN      58  // Hauteur mini vertical
+#define VMAX      80  // Hauteur maxi vertical
+
+#define D 8      // Taille en octets d'un double
 
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
@@ -26,32 +48,15 @@ const char* password = STAPSK;
 #include <math.h>
 #include "MPU9250.h"
 
+// APA106
+#include <Adafruit_NeoPixel.h>
+Adafruit_NeoPixel pixels(1, LED, NEO_RGB + NEO_KHZ400);
 MPU9250 IMU(Wire, 0x68);
 
-#define BOUTON D3   // Bouton de calibrage de position park
-#define BOFFSET D4  // Bouton Offset (position horizontale)
-#define PARK D8     // Télescope parqué (Connecté à l'abri)
-#define LIMIT D0    // Limites (option)
-#define LEDR D5     // LED indicateur position home
-#define LEDV D6     // LED indicateur postion park de précision
-#define LEDB D7     // LED indicateur position park OK
+// Timer
+#include <SimpleTimer.h>
+SimpleTimer timer;
 
-#define TOL 3       // Tolérance de park en degrés
-#define TCAL 0.5    // Axe calibré
-#define TOLH 7      // Tolérance home
-#define TOLZ 50     // Tolérance boussole en degrés
-#define TOLAZ 1     // Tolérance magnétomètre Z en g
-#define TOLLIMX   -15 // Tolérance limites (télescope baissé)
-#define TOLLIMYH  -11 // Tolérance AD, télescope horizontal TELESCOPE
-#define TOLLIMYV  -4.5  // Tolérance AD, télescope vertical TELESCOPE
-//#define TOLLIMYH  -20 // Tolérance AD, télescope horizontal   LUNETTE
-//#define TOLLIMYV  -20  // Tolérance AD, télescope vertical    LUNETTE
-
-#define TVERT     11  // Angle (90+/- TVERT) télescope considéré vertical  
-#define VMIN      58  // Hauteur mini vertical
-#define VMAX      80  // Hauteur maxi vertical
-
-#define D 8			// Taille en octets d'un double
 
 // Variables globales
 
@@ -76,6 +81,7 @@ bool park, prevPark, xx, yy, limit, home = false;
 bool LimitStatus = true;
 
 int ETATB = 0;    // Etat du bouton poussoir
+int TIMER;        // N° du timer
 
 void setup() {
   Serial.begin(9600);
@@ -91,15 +97,11 @@ void setup() {
 
   //Initialisation des sorties
   pinMode(BOUTON, INPUT_PULLUP);
-  pinMode(BOFFSET, INPUT_PULLUP);
   pinMode(PARK, OUTPUT);
   digitalWrite(PARK, LOW);
   pinMode(LIMIT, INPUT);
   digitalWrite(LIMIT, LOW);
-  pinMode(LEDR, OUTPUT);
-  pinMode(LEDV, OUTPUT);
-  pinMode(LEDB, OUTPUT);
-  RVB(255, 255, 255);
+  //RVB(255, 255, 255);
 
   // MPU9250
   // start communication with IMU
@@ -164,12 +166,18 @@ void setup() {
   server.on("/lim", setLimit);
   server.begin();
 
+  // APA106
+  pixels.begin();
+  pixels.clear();
+
 }
 
 void loop() {
   ArduinoOTA.handle();
   server.handleClient();
 
+  timer.run();
+  //Serial.print("Etat bouton:"); Serial.println(ETATB);
   if (ETATB == 0) {
     // MPU9250
     IMU.readSensor();
@@ -180,7 +188,7 @@ void loop() {
     //read accel data
     AcX = IMU.getAccelX_mss();
     AcY = IMU.getAccelY_mss();
-    AcZ = IMU.getAccelZ_mss();
+    AcZ = -IMU.getAccelZ_mss();
     AZ = AcZ;
 
     //read temperature data
@@ -189,14 +197,14 @@ void loop() {
     //read gyro data
     GyX = IMU.getGyroX_rads();
     GyY = IMU.getGyroY_rads();
-    GyZ = IMU.getGyroZ_rads();
+    GyZ = -IMU.getGyroZ_rads();
 
     //get pitch/roll
     getAngle(AcX, AcY, AcZ);
 
     MagX = IMU.getMagX_uT();
     MagY = IMU.getMagY_uT();
-    MagZ = IMU.getMagZ_uT();
+    MagZ = -IMU.getMagZ_uT();
     yaw = getYaw(MagX, MagY, MagZ);
     angle = AcZ;
     cote = MagZ;
@@ -204,10 +212,13 @@ void loop() {
     X = pitch - OFX;
     Y = roll - OFY;
     Z = yaw;
-    Serial.print(String(X) + ',' + String(Y));
-    Serial.print(" " + String(AcZ));
-
+    //Serial.print(String(X) + ',' + String(Y));
+    //Serial.print(" " + String(AcZ));
+    //Serial.println(String(AcX)+" , "+String(AcY)+" , "+String((AcZ)));
+    //Serial.println();Serial.println();
+    Serial.println(String(AcX)+" , "+String(AcY)+" , "+String((AcZ)));
     Serial.println();
+    delay(1000);
     /*
         //send the data out the serial port
         Serial.print("Orientation: "); Serial.print(Z, 6);
@@ -290,17 +301,81 @@ void loop() {
     }
 
 
-
     // Lecture des boutons
-    if (!digitalRead(BOUTON)) { // Bouton de calibrage park
-      ETATB = 1;
+    if (!digitalRead(BOUTON)) { // Bouton appuyé
+      if (!ETATB) {
+        timer.setTimeout(5000, bouton5s);
+        RVB(0, 0, 255);   // Bleu
+        ETATB = 1;
+      }
     }
-    if (!digitalRead(BOFFSET)) {  // Bouton de calibrage offset
-      ETATB = 2;
-    }
-    delay(200);
   }
-  if (ETATB == 1) {
+  else {
+    // Lecture des boutons
+    if (!digitalRead(BOUTON)) { // Bouton appuyé
+      switch (ETATB) {
+        case 1:
+          ETATB++;
+          break;
+        case 3:   // Bouton appuyé depuis plus de 5s
+          TIMER = timer.setTimeout(5000, bouton5s);
+          RVB(237, 127, 16); // Orange
+          ETATB++;
+          break;
+        case 5:   // Bouton appuyé depuis plus de 10s
+          TIMER = timer.setTimeout(5000, bouton5s);
+          ETATB++;
+          RVB(255, 0, 0);
+          break;
+        case 7: // Bouton appuyé plus de 15s: annulation
+          ETATB++;
+          RVB(0, 0, 255);
+          delay(3000);
+          break;
+      }
+    }
+    else {    // Bouton relaché
+      if (timer.getNumTimers()) {
+        timer.deleteTimer(TIMER);
+      }
+      switch (ETATB) {
+        case 2:   // Bouton relaché avant 5s
+
+          ETATB = 0;
+          break;
+
+        case 4:   // Position Park
+          ETATB = 0;
+          EEPROM.put(0 * D, X);
+          EEPROM.put(1 * D, Y);
+          EEPROM.put(2 * D, Z);
+          EEPROM.put(5 * D, AZ);
+          EEPROM.commit();
+          XOK = X;
+          YOK = Y;
+          ZOK = Z;
+          AOK = AZ;
+          Clignote();
+          break;
+        case 6:   // Calibrage
+          ETATB = 0;
+          EEPROM.put(3 * D, pitch);
+          EEPROM.put(4 * D, roll);
+          EEPROM.commit();
+          OFX = pitch;
+          OFY = roll;
+          Clignote();
+          break;
+        case 8u: // Annulation
+          ETATB = 0;
+          break;
+      }
+    }
+
+    delay(200); 
+  }
+  /*
+    if (ETATB == 1) {
     Serial.println("Bouton");
     RVB(237, 237, 237);
     delay(1000);
@@ -329,8 +404,8 @@ void loop() {
     RVB(0, 0, 0);
     ETATB = 0;
     delay(500);
-  }
-  if (ETATB == 2 ) {
+    }
+    if (ETATB == 2 ) {
     // Cablibrage des offsets
     EEPROM.put(3 * D, pitch);
     EEPROM.put(4 * D, roll);
@@ -340,9 +415,15 @@ void loop() {
     Clignote();
     ETATB = 0;
     delay(500);
-  }
+    }
+  */
 }
 
+void bouton5s() {
+  if (!digitalRead(BOUTON)) {     // Bouton toujours appuyé
+    ETATB++;
+  }
+}
 void showAxis() {
   Serial.println("Affichage des axes ");
   server.send(200, "text/plain", String(X) + " " + String(Y) + " " + String(Z) + "\t" + String(angle) + "," + String(cote) + "\n");
@@ -407,9 +488,8 @@ double getYaw(double magX, double magY, double magZ) {
 }
 
 void RVB(int R, int V, int B) {
-  analogWrite(LEDR, R);
-  analogWrite(LEDV, V);
-  analogWrite(LEDB, B);
+  pixels.setPixelColor(0, pixels.Color(R, V, B));
+  pixels.show();
 }
 
 void Clignote() {
