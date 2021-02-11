@@ -9,15 +9,14 @@ Ainsi, l'abri roulant peut se fermer.
 
 Calibrage:
 1. Positionner le télescope dans sa position de park
-2. Maintenir appuyé le bouton. La LED s'éclaire en blanc, puis en orange.
+2. Maintenir appuyé le bouton. La LED s'éclaire en bleu, puis en orange.
 3. Relacher le bouton. Le calibrage est effectué. La LED clignote en rouge.
 
-Relacher le bouton avant que la LED passe en orange annule le calibrage. Maintenir le bouton appuyé quand la LED est orange annule aussi le calibrage.
+Relacher le bouton avant que la LED passe en orange annule le calibrage. Maintenir le bouton appuyé jusqu'à ce que la LED repasse en bleu annule aussi le calibrage.
 
 Réglage des offsets 
-1. Ouvrir le boitier
-2. Placer le télescope en position horizontale (à l'aide d'un niveau)
-3. appuyer sur le bouton intérieur. La LED clignote en rouge.
+1. Placer le télescope en position horizontale (à l'aide d'un niveau)
+2. appuyer sur le bouton jusqu'à ce que la LED passe en rouge. La LED clignote en rouge.
 
 Le calibrage des offsets permet d'améliorer la précision de la position "home"
 
@@ -28,39 +27,32 @@ Entrées/Sorties:
 	1. GND
 	2. 5V
 	3. Park
-	4. (Limit) Pas encore implémenté
+	4. Limites
 - Bouton poussoir:
-	Calibrage de la position de park
-- Bouton poussoir interne:
-	Calibrage des offsets X, Y
-- LED RGB:
+	Calibrage de la position de park et de offsets
+- LED RGB (APA106):
 	* Vert: 	axe X parqué (précision 0,5°)
 	* Rouge: 	axe Y parqué (précision 0,5°)
 	* Orange: axes XY parqués (précision 0,5°)
 	* Bleu:	télescope parqué (précision 3°)
 
-	* Rouge: Position home (vise le pole céleste) (précision 2°)
+	* Orange: Position home (vise le pole céleste) (précision 2°)
 
-	* Blanc: Après appui long sur le bouton
+	* Bleu: Après appui long sur le bouton
 	* Jaune: Position de park en cours de validation
 	* Rouge clignotant: Position de park validée
 
 
 ## Broches sur le Wemos:
-* D0:	Télescope parqué (sortie vers l'abri roulant)
+* D3:	Télescope parqué (sortie vers l'abri roulant)
 * D1/D2: 	I2c (magnétomètre)
-* D3:	Bouton de calibrage du park.
-* D4:	Bouton de calibrage des offsets
-* D5: 	LED rouge
-* D6:	LED verte
-* D7:	LED bleue
-* D8:	Limites (pas encore implémenté)
+* D6:	Bouton de calibrage du park.
+* D7:	LED (APA106)
+* D4:	Limites (Sortie vers OnStep)
 
 ## Matériel:
 * Wemos mini D1 pro
 * MPU9250 (accéléromètre, gyroscope, magnétomètre)
-* 2 boutons pousoirs
-* 1 LED RVB
-* 3 résistances de 330 ohms
-* 1 fiche DIN femelle 5 broches
+* 1 bouton pousoir
+* 1 LED RVB APA106
 * 1 boitier
