@@ -1,31 +1,30 @@
 /*
   # Serge CLAUS
   # GPL V3
-  # Version 5.0
-  # 02/11/2018 / 09/02/2021
+  # Version 5.1
+  # 02/11/2018 / 11/02/2021
 */
 
-#define BOUTON  D6    // Bouton de calibrage de position park
+#define BOUTON  D7    // Bouton de calibrage et de position park
 #define PARK    D3    // Télescope parqué (Connecté à l'abri)
 #define LIMIT   D4    // Limites (option)
-#define LED     D5     // LED indicateur position home
+#define LED     D6    // LED indicateur position home
 
-#define TOL 3       // Tolérance de park en degrés
-#define TCAL 0.5    // Axe calibré
-#define TOLH 7      // Tolérance home
-#define TOLZ 50     // Tolérance boussole en degrés
-#define TOLAZ 1     // Tolérance magnétomètre Z en g
+#define TOL 3         // Tolérance de park en degrés
+#define TCAL 0.5      // Axe calibré
+#define TOLH 7        // Tolérance home
+#define TOLZ 50       // Tolérance boussole en degrés
+#define TOLAZ 1       // Tolérance magnétomètre Z en g
 #define TOLLIMX   -15 // Tolérance limites (télescope baissé)
-#define TOLLIMYH  -11 // Tolérance AD, télescope horizontal TELESCOPE
-#define TOLLIMYV  -4.5  // Tolérance AD, télescope vertical TELESCOPE
-//#define TOLLIMYH  -20 // Tolérance AD, télescope horizontal   LUNETTE
-//#define TOLLIMYV  -20  // Tolérance AD, télescope vertical    LUNETTE
+#define TOLLIMYH  -20 //-11  // Tolérance AD, télescope horizontal TELESCOPE
+#define TOLLIMYV  -20 //-4.5 // Tolérance AD, télescope vertical TELESCOPE
 
 #define TVERT     11  // Angle (90+/- TVERT) télescope considéré vertical  
 #define VMIN      58  // Hauteur mini vertical
 #define VMAX      80  // Hauteur maxi vertical
 
 #define D 8      // Taille en octets d'un double
+#define LUM       4   // Luminosité des LEDs (Luminosité/LUM)
 
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
@@ -77,7 +76,7 @@ double AOK;
 double OFX = 0;      // Offset sur l'axe X
 double OFY = 0;      // Offset sur l'axe Y
 
-bool park, prevPark, xx, yy, limit, home = false;
+bool park, prevPark, xx, yy, limit, oldlimit, home = false;
 bool LimitStatus = true;
 
 int ETATB = 0;    // Etat du bouton poussoir
@@ -173,52 +172,54 @@ void setup() {
 }
 
 void loop() {
-  ArduinoOTA.handle();
+  //ArduinoOTA.handle();
   server.handleClient();
 
   timer.run();
   //Serial.print("Etat bouton:"); Serial.println(ETATB);
   if (ETATB == 0) {
     // MPU9250
-    IMU.readSensor();
+    do {
+      ArduinoOTA.handle();
+    } while (IMU.readSensor() != 1 );
     double AcXoff, AcYoff, AcZoff, GyXoff, GyYoff, GyZoff, MagX, MagY, MagZ;
     int temp, toff;
     double t, tx, tf;
 
     //read accel data
-    AcX = IMU.getAccelX_mss();
-    AcY = IMU.getAccelY_mss();
-    AcZ = -IMU.getAccelZ_mss();
+    AcZ = -IMU.getAccelX_mss();
+    AcY = -IMU.getAccelY_mss();
+    AcX = -IMU.getAccelZ_mss();
     AZ = AcZ;
 
     //read temperature data
     temp = IMU.getTemperature_C();
 
     //read gyro data
-    GyX = IMU.getGyroX_rads();
-    GyY = IMU.getGyroY_rads();
-    GyZ = -IMU.getGyroZ_rads();
+    GyZ = -IMU.getGyroX_rads();
+    GyY = -IMU.getGyroY_rads();
+    GyX = -IMU.getGyroZ_rads();
 
     //get pitch/roll
     getAngle(AcX, AcY, AcZ);
 
-    MagX = IMU.getMagX_uT();
-    MagY = IMU.getMagY_uT();
-    MagZ = -IMU.getMagZ_uT();
+    MagZ = -IMU.getMagX_uT();
+    MagY = -IMU.getMagY_uT();
+    MagX = -IMU.getMagZ_uT();
     yaw = getYaw(MagX, MagY, MagZ);
-    angle = AcZ;
-    cote = MagZ;
+    angle = AcZ; //AcZ
+    cote = MagZ; //MagZ
 
     X = pitch - OFX;
     Y = roll - OFY;
     Z = yaw;
-    //Serial.print(String(X) + ',' + String(Y));
-    //Serial.print(" " + String(AcZ));
-    //Serial.println(String(AcX)+" , "+String(AcY)+" , "+String((AcZ)));
-    //Serial.println();Serial.println();
-    Serial.println(String(AcX)+" , "+String(AcY)+" , "+String((AcZ)));
-    Serial.println();
-    delay(1000);
+    /*
+      Serial.print(String(pitch) + ',' + String(roll));
+      Serial.println(" " + String(Z));
+      Serial.println(String(AcX) + " , " + String(AcY) + " , " + String((AcZ)));
+      Serial.println();
+      delay(1000);
+    */
     /*
         //send the data out the serial port
         Serial.print("Orientation: "); Serial.print(Z, 6);
@@ -247,13 +248,14 @@ void loop() {
     // Hors limites
 
     if (LimitStatus) {
+      oldlimit = limit;
       if (X > VMIN && X < VMAX && (((cote < -50) && (angle > 0)) || ((cote > -30 && angle < 0)))) {
         limit = ((X < TOLLIMX) || (Y < TOLLIMYV) ? true : false );
       }
       else {
         limit = ((X < TOLLIMX) || (Y < TOLLIMYH) ? true : false );
       }
-      if (limit) {
+      if (limit && oldlimit) {
         // Limites
         Serial.println("Limites");
         digitalWrite(LIMIT, LOW);
@@ -271,7 +273,7 @@ void loop() {
     if (home) {
       // Home
       Serial.println("Home");
-      //RVB(237, 127, 16);
+      RVB(237, 127, 16);
     }
     if (park) {
       Serial.println("Park");
@@ -372,7 +374,7 @@ void loop() {
       }
     }
 
-    delay(200); 
+    delay(200);
   }
   /*
     if (ETATB == 1) {
@@ -425,12 +427,12 @@ void bouton5s() {
   }
 }
 void showAxis() {
-  Serial.println("Affichage des axes ");
+  //Serial.println("Affichage des axes ");
   server.send(200, "text/plain", String(X) + " " + String(Y) + " " + String(Z) + "\t" + String(angle) + "," + String(cote) + "\n");
 }
 
 void showStatus() {
-  Serial.println("Affichage du status du télescope ");
+  //Serial.println("Affichage du status du télescope ");
   String status = "N";
   if (limit) status = "L";
   if (home) status = "H";
@@ -488,7 +490,7 @@ double getYaw(double magX, double magY, double magZ) {
 }
 
 void RVB(int R, int V, int B) {
-  pixels.setPixelColor(0, pixels.Color(R, V, B));
+  pixels.setPixelColor(0, pixels.Color(R / LUM, V / LUM, B / LUM));
   pixels.show();
 }
 
