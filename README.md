@@ -29,7 +29,7 @@ Entrées/Sorties:
 	3. Park
 	4. Limites
 - Bouton poussoir:
-	Calibrage de la position de park et de offsets
+	Calibrage de la position de park et des offsets
 - LED RGB (APA106):
 	* Vert: 	axe X parqué (précision 0,5°)
 	* Rouge: 	axe Y parqué (précision 0,5°)

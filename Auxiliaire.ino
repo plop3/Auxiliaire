@@ -188,7 +188,7 @@ void loop() {
 
     //read accel data
     AcZ = -IMU.getAccelX_mss();
-    AcY = -IMU.getAccelY_mss();
+    AcY = IMU.getAccelY_mss();
     AcX = -IMU.getAccelZ_mss();
     AZ = AcZ;
 
