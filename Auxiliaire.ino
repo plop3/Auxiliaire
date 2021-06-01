@@ -26,6 +26,8 @@
 #define D 8      // Taille en octets d'un double
 #define LUM       4   // Luminosité des LEDs (Luminosité/LUM)
 
+#define TEMPOPARK 30  // Temporisation avant arret de la LED une fois le télescope parqué
+
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
@@ -55,6 +57,8 @@ MPU9250 IMU(Wire, 0x68);
 // Timer
 #include <SimpleTimer.h>
 SimpleTimer timer;
+
+unsigned long TimerDebut;
 
 
 // Variables globales
@@ -168,7 +172,7 @@ void setup() {
   // APA106
   pixels.begin();
   pixels.clear();
-
+  TimerDebut=millis();    // Initialisation du timer pour la LED
 }
 
 void loop() {
@@ -273,31 +277,38 @@ void loop() {
     if (home) {
       // Home
       Serial.println("Home");
-      RVB(237, 127, 16);
+      //RVB(237, 127, 16); // Supression temporaire, partie à recalculer
     }
     if (park) {
+      unsigned long currentMillis = millis();
       Serial.println("Park");
-      digitalWrite(PARK, HIGH);
-      if (xx && yy) {
-        // Deux axes calibrés
-        RVB(0, 255, 0); // Vert
+      if (currentMillis - TimerDebut >= TEMPOPARK*1000L) {
+        if (!home && !limit) RVB(0, 0, 0); // LEDs éteintes
       }
-      else if (xx) {
-        // Axe X calibré
-        RVB(255, 0, 255);; // Orange
-      }
-      else if (yy) {
-        // Axe Y calibré
-        RVB(255, 255, 0);  //Jaune
+      else {  
+        digitalWrite(PARK, HIGH);
+        if (xx && yy) {
+          // Deux axes calibrés
+          RVB(0, 255, 0); // Vert
+        }
+        else if (xx) {
+          // Axe X calibré
+          RVB(255, 0, 255);; // Orange
+        }
+        else if (yy) {
+          // Axe Y calibré
+          RVB(255, 255, 0);  //Jaune
 
-      }
-      else {
-        // Position Park
-        RVB(0, 0, 255); // Bleu
+        }
+        else {
+          // Position Park
+          RVB(0, 0, 255); // Bleu
+        }
       }
     }
     else {
       // Télescope non parqué
+      TimerDebut=millis();  // Réinitialisation du timer pour la LED
       if (!prevPark) digitalWrite(PARK, LOW);
       if (!home && !limit) RVB(0, 0, 0); // LEDs éteintes
     }
