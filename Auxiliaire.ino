@@ -118,10 +118,10 @@ void setup() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   int nb = 50;
-  while ((WiFi.waitForConnectResult() != WL_CONNECTED) && (nb > 0)) {
+  while ((WiFi.status() != WL_CONNECTED) && (nb > 0)) {
     nb--;
     Serial.println("Connection Failed! Restart...");
-    delay(6000);
+    delay(1000);
     //ESP.restart();
   }
 
