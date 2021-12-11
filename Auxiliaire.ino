@@ -108,6 +108,8 @@ void setup() {
 
   // MPU9250
   // start communication with IMU
+  Wire.begin();
+  Wire.setClock(400000);
   status = imu.Begin();
   if (status < 0) {
     Serial.println("IMU initialization unsuccessful");
@@ -115,6 +117,8 @@ void setup() {
     Serial.print("Status: ");
     Serial.println(status);
   }
+  imu.ConfigSrd(19);
+
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   /*
