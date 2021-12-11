@@ -47,8 +47,8 @@ const char* password = STAPSK;
 
 // MPU6050
 #include <math.h>
-#include "MPU9250.h" // https://github.com/bolderflight/mpu9250 /!\ Version 1.0.1 (à adapter pour les versions plus récentes
-MPU9250 IMU(Wire, 0x68);
+#include "mpu9250.h" // https://github.com/bolderflight/mpu9250
+bfs::Mpu9250 imu(&Wire, 0x68);
 
 // APA106
 #include <Adafruit_NeoPixel.h>
@@ -108,7 +108,7 @@ void setup() {
 
   // MPU9250
   // start communication with IMU
-  status = IMU.begin();
+  status = imu.Begin();
   if (status < 0) {
     Serial.println("IMU initialization unsuccessful");
     Serial.println("Check IMU wiring or try cycling power");
@@ -117,14 +117,15 @@ void setup() {
   }
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
-  int nb = 50;
-  while ((WiFi.status() != WL_CONNECTED) && (nb > 0)) {
-    nb--;
-    Serial.println("Connection Failed! Restart...");
-    delay(1000);
-    //ESP.restart();
-  }
-
+  /*
+    int nb = 50;
+    while ((WiFi.status() != WL_CONNECTED) && (nb > 0)) {
+      nb--;
+      Serial.println("Connection Failed! Restart...");
+      delay(1000);
+      //ESP.restart();
+    }
+  */
   ArduinoOTA.setHostname("auxiliaire");
   ArduinoOTA.onStart([]() {
     String type;
@@ -172,7 +173,7 @@ void setup() {
   // APA106
   pixels.begin();
   pixels.clear();
-  TimerDebut=millis();    // Initialisation du timer pour la LED
+  TimerDebut = millis();  // Initialisation du timer pour la LED
 }
 
 void loop() {
@@ -185,31 +186,31 @@ void loop() {
     // MPU9250
     do {
       ArduinoOTA.handle();
-    } while (IMU.readSensor() != 1 );
+    } while (imu.Read() != 1 );
     double AcXoff, AcYoff, AcZoff, GyXoff, GyYoff, GyZoff, MagX, MagY, MagZ;
     int temp, toff;
     double t, tx, tf;
 
     //read accel data
-    AcZ = -IMU.getAccelX_mss();
-    AcY = IMU.getAccelY_mss();
-    AcX = -IMU.getAccelZ_mss();
+    AcZ = -imu.accel_x_mps2();
+    AcY = imu.accel_y_mps2();
+    AcX = -imu.accel_z_mps2();
     AZ = AcZ;
 
     //read temperature data
-    temp = IMU.getTemperature_C();
+    temp = imu.die_temp_c();
 
     //read gyro data
-    GyZ = -IMU.getGyroX_rads();
-    GyY = -IMU.getGyroY_rads();
-    GyX = -IMU.getGyroZ_rads();
+    GyZ = -imu.gyro_x_radps();
+    GyY = -imu.gyro_y_radps();
+    GyX = -imu.gyro_z_radps();
 
     //get pitch/roll
     getAngle(AcX, AcY, AcZ);
 
-    MagZ = -IMU.getMagX_uT();
-    MagY = -IMU.getMagY_uT();
-    MagX = -IMU.getMagZ_uT();
+    MagZ = -imu.mag_x_ut();
+    MagY = -imu.mag_y_ut();
+    MagX = -imu.mag_z_ut();
     yaw = getYaw(MagX, MagY, MagZ);
     angle = AcZ; //AcZ
     cote = MagZ; //MagZ
@@ -282,10 +283,10 @@ void loop() {
     if (park) {
       unsigned long currentMillis = millis();
       Serial.println("Park");
-      if (currentMillis - TimerDebut >= TEMPOPARK*1000L) {
+      if (currentMillis - TimerDebut >= TEMPOPARK * 1000L) {
         if (!home && !limit) RVB(0, 0, 0); // LEDs éteintes
       }
-      else {  
+      else {
         digitalWrite(PARK, HIGH);
         if (xx && yy) {
           // Deux axes calibrés
@@ -308,7 +309,7 @@ void loop() {
     }
     else {
       // Télescope non parqué
-      TimerDebut=millis();  // Réinitialisation du timer pour la LED
+      TimerDebut = millis(); // Réinitialisation du timer pour la LED
       if (!prevPark) digitalWrite(PARK, LOW);
       if (!home && !limit) RVB(0, 0, 0); // LEDs éteintes
     }
