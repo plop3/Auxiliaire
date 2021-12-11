@@ -47,12 +47,12 @@ const char* password = STAPSK;
 
 // MPU6050
 #include <math.h>
-#include "MPU9250.h"
+#include "MPU9250.h" // https://github.com/bolderflight/mpu9250 /!\ Version 1.0.1 (à adapter pour les versions plus récentes
+MPU9250 IMU(Wire, 0x68);
 
 // APA106
 #include <Adafruit_NeoPixel.h>
 Adafruit_NeoPixel pixels(1, LED, NEO_RGB + NEO_KHZ400);
-MPU9250 IMU(Wire, 0x68);
 
 // Timer
 #include <SimpleTimer.h>
