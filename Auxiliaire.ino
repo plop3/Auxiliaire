@@ -15,7 +15,7 @@
 #define TOLH 7        // Tolérance home
 #define TOLZ 50       // Tolérance boussole en degrés
 #define TOLAZ 1       // Tolérance magnétomètre Z en g
-#define TOLLIMX   -15 // Tolérance limites (télescope baissé)
+#define TOLLIMX   -30 // Tolérance limites (télescope baissé)
 #define TOLLIMYH  -20 //-11  // Tolérance AD, télescope horizontal TELESCOPE
 #define TOLLIMYV  -20 //-4.5 // Tolérance AD, télescope vertical TELESCOPE
 
