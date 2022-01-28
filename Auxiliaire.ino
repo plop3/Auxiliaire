@@ -249,8 +249,10 @@ bool telPark() {
       }
       return true;
     }
-    delay(200);
+    delay(50);
   }
+  // Télescope non parqué
+  digitalWrite(PARK, LOW);
   if (!Limites) RVB(0,0,0);
   TimerDebut = millis(); // Réinitialisation du timer pour la LED
   return false;
