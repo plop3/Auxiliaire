@@ -56,6 +56,10 @@ const char* password = STAPSK;
 bfs::Mpu9250 imu(&Wire, 0x68);
 int status;
 
+// Telnet
+#include "ESPTelnet.h"  
+ESPTelnet telnet;
+
 // Variables globales
 double AltOffset, RotOffset = 0;
 double AltPark, RotPark = 0;
@@ -99,6 +103,7 @@ void setup() {
   // WiFi
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
+
   // OTA
   ArduinoOTA.setHostname("auxiliaire");
   ArduinoOTA.onStart([]() {
@@ -120,13 +125,20 @@ void setup() {
   pixels.begin();
   pixels.clear();
   TimerDebut = millis();  // Initialisation du timer pour la LED
+
+delay(15000);
+  // Telnet
+  telnet.begin();
 }
 
 void loop() {
   timer.run();
-  Serial.print(ALT); Serial.print(" ");Serial.print(ROT);Serial.print(" Offset: ");
-  Serial.print(AltOffset); Serial.print(" ");Serial.print(RotOffset);Serial.print(" Park: ");
-  Serial.print(AltPark); Serial.print(" ");Serial.println(RotPark);
+  telnet.loop();
+  String rep=String(ALT)+" "+String(ROT)+" offset: "+String(AltOffset)+" "+String(RotOffset)+" Park: "+String(AltPark)+" "+String(RotPark);
+  telnet.println(rep);
+  //telnet.print(ALT); telnet.print(" ");telnet.print(ROT);telnet.print(" Offset: ");
+  //telnet.print(AltOffset); telnet.print(" ");telnet.print(RotOffset);telnet.print(" Park: ");
+  //telnet.print(AltPark); telnet.print(" ");telnet.println(RotPark);
 
   if (ETATB == 0) {       // Mode surveillance
     ArduinoOTA.handle();
@@ -155,8 +167,8 @@ void getAngle() {
   double z = imu.accel_x_mps2();
   double y = imu.accel_y_mps2();
   double x = imu.accel_z_mps2();
-  ALT = TELPOS * 57.3 * atan(x / sqrt((y * y) + (z * z)));
-  ROT = -TELPOS * 57.3 * atan(y / sqrt((x * x) + (z * z))); // TODO Tester si TELPOS est nécessaire sur cette ligne
+  ALT = -TELPOS * 57.3 * atan(x / sqrt((y * y) + (z * z)));
+  ROT = TELPOS * 57.3 * atan(y / sqrt((x * x) + (z * z))); // TODO Tester si TELPOS est nécessaire sur cette ligne
 }
 
 void RVB(int R, int V, int B) {
@@ -199,7 +211,7 @@ void telLimit() {
       return;
     }
   }
-  Serial.println("*** LIMITES ***");
+  telnet.println("*** LIMITES ***");
   Limites=true;
   digitalWrite(LIMIT, LOW);
   pinMode(LIMIT, OUTPUT);
@@ -210,23 +222,23 @@ bool telPark() {
   // Test du park du télescope
   for (int i=0; i<2; i++) {
       getAngle();
-    if ((ALT -AltOffset) <= (AltPark + TOLPARK) && (ALT -AltOffset) >= (AltPark - TOLPARK)  && (ROT - RotOffset) <= (RotPark + TOLPARK) && (ROT - RotOffset) >= (RotPark - TOLPARK)) {
+    if (ALT <= (AltPark + TOLPARK) && ALT >= (AltPark - TOLPARK)  && ROT <= (RotPark + TOLPARK) && ROT >= (RotPark - TOLPARK)) {
       // Télescope parqué
-      Serial.println("Park");
+      telnet.println("Park");
       digitalWrite(PARK, HIGH);
       if (millis() - TimerDebut >= TEMPOPARK * 1000L) {
         RVB(0, 0, 0); // LEDs éteintes
       }
       else {
-        if (abs(ROT) < TCAL && abs(ALT) < TCAL) {
+        if (abs(ROT-RotPark) < TCAL && abs(ALT-AltPark) < TCAL) {
           // Deux axes calibrés
           RVB(0, 255, 0); // Vert
         }
-        else if (abs(ALT) < TCAL) {
+        else if (abs(ALT-AltPark) < TCAL) {
           // Axe X calibré
           RVB(255, 0, 255);; // Orange
         }
-        else if (abs(ROT) < TCAL) {
+        else if (abs(ROT-RotPark) < TCAL) {
           // Axe Y calibré
           RVB(255, 255, 0);  //Jaune
         }
