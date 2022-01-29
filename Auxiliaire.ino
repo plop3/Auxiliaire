@@ -136,9 +136,6 @@ void loop() {
   telnet.loop();
   String rep=String(ALT)+" "+String(ROT)+" offset: "+String(AltOffset)+" "+String(RotOffset)+" Park: "+String(AltPark)+" "+String(RotPark);
   telnet.println(rep);
-  //telnet.print(ALT); telnet.print(" ");telnet.print(ROT);telnet.print(" Offset: ");
-  //telnet.print(AltOffset); telnet.print(" ");telnet.print(RotOffset);telnet.print(" Park: ");
-  //telnet.print(AltPark); telnet.print(" ");telnet.println(RotPark);
 
   if (ETATB == 0) {       // Mode surveillance
     ArduinoOTA.handle();
