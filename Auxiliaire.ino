@@ -17,7 +17,7 @@
 
 #include <EEPROM.h>
 
-#define TELPOS    -1  // Sens de montage du télescope (1, -1)
+#define TELPOS    1   // Sens de montage du télescope (1, -1)
 #define TOLPARK   3   // Tolérance de park en degrés
 #define TCAL      0.7 // Axe calibré
 #define TOLALT    -30 // Tolérance limites (télescope baissé)
