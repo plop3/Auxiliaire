@@ -17,11 +17,12 @@
 
 #include <EEPROM.h>
 
-#define TELPOS    1   // Sens de montage du télescope (1, -1)
+#define TELPOS    -1   // Sens de montage du télescope (1, -1)
 #define TOLPARK   3   // Tolérance de park en degrés
 #define TCAL      0.7 // Axe calibré
 #define TOLALT    -30 // Tolérance limites (télescope baissé)
-#define TOLROT    -20 //-11  // Tolérance AD, télescope horizontal TELESCOPE
+#define TOLROT    -20 //-11  // Tolérance AD
+#define TOLROTPARk -5 // Tolérance AD, télescope horizontal
 #define TEMPOPARK 30  // Temporisation avant arret de la LED une fois le télescope parqué
 
 #define D 8      // Taille en octets d'un double
@@ -190,8 +191,8 @@ void bouton5s() {
 
 void telLimit() {
   for (int i=0; i<2; i++) {
-    // Tests de position du télescope
-    if ((ROT - RotOffset) < TOLROT || (ALT - AltOffset) < TOLALT) {
+    // Tests de position du télescope (Moins de tolérance quand le télescope est parqué)
+    if ((ROT - RotOffset) < TOLROT || (ALT - AltOffset) < TOLALT || ((abs(ALT-AltOffset)-AltPark) < 10 && (ALT-RotOffset)< TOLROTPARk)) {
     // Limites atteintes, 2e test
     getAngle();
     delay(200);
