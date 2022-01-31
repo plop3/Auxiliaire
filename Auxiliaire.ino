@@ -306,7 +306,7 @@ void gereBoutons() {
         RotOffset = ROT;
         Clignote();
         break;
-      case 8u: // Annulation
+      case 8: // Annulation
         ETATB = 0;
         break;
     }
